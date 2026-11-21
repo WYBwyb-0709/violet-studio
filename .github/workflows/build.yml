@@ -12,12 +12,8 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: .\build\build-win.ps1
-            shell: pwsh
             artifacts: dist/*.exe
           - os: ubuntu-latest
-            script: bash build/build-linux.sh
-            shell: bash
             artifacts: dist/*.AppImage dist/*.deb
     runs-on: ${{ matrix.os }}
     steps:
@@ -43,9 +39,15 @@ jobs:
           sudo apt-get clean || true
           docker system prune -af || true
 
-      - name: Build (${{ matrix.os }})
-        shell: ${{ matrix.shell }}
-        run: ${{ matrix.script }}
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\build\build-win.ps1
+
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: bash build/build-linux.sh
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
