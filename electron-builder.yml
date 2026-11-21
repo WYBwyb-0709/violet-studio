@@ -35,9 +35,6 @@ linux:
     - target: AppImage
       arch:
         - x64
-    - target: deb
-      arch:
-        - x64
   artifactName: Violet-Studio-${version}-linux-x64.${ext}
   category: Graphics
 
