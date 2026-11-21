@@ -1,4 +1,4 @@
-# Python AI sidecar 依赖（CPU 优先，跨平台）
+# Python AI sidecar dependencies (CPU-first, cross-platform; ASCII-only comments for Windows pip compatibility)
 fastapi>=0.115
 uvicorn>=0.30
 pydantic>=2.7
@@ -7,7 +7,7 @@ Pillow>=10.3
 PyYAML>=6.0.1
 psutil>=5.9
 
-# 推理后端（按需；工作流在 Windows/Linux 分别构建 wheel）
+# Inference backends (built per-platform in CI)
 torch>=2.6 --index-url https://download.pytorch.org/whl/cpu
 diffusers>=0.30
 transformers>=4.44
@@ -17,6 +17,6 @@ openvino-genai>=2025.0
 onnxruntime>=1.18
 safetensors>=0.4
 
-# 分层生成与属性估计（可选，首次使用时下载模型）
-# LayerDiffuse: 透明 VAE + FG/BG LoRA（通过 diffusers 加载）
-# Depth-Anything-V2-Base / Marigold / BiRefNet: 通过 transformers 或 torch hub
+# Layered generation / attribute estimation (models downloaded on first use)
+# LayerDiffuse: transparent VAE + FG/BG LoRA (loaded via diffusers)
+# Depth-Anything-V2-Base / Marigold / BiRefNet: via transformers or torch hub

@@ -2,6 +2,9 @@
 # 在 Windows PowerShell / CI windows-latest 上运行
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
+# Force UTF-8 so pip/Python never hit cp1252 decoding errors on Windows
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
 Write-Host "== [1/4] Python venv & deps =="
 python -m venv .venv
 & .\.venv\Scripts\Activate.ps1
