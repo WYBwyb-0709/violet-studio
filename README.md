@@ -2,6 +2,8 @@
 
 跨平台 **2.5D 分层 AI 生图**桌面软件。一个界面，四种能力：**生成 / 训练 / 模型微调 / 画面调整**。HTML 界面 + Python AI 后端，Windows 与 Linux 双平台安装包，MIT 许可。
 
+> 仓库：https://github.com/WYBwyb-0709/violet-studio
+
 ## 核心特性
 
 - **四种模式**
