@@ -1,0 +1,22 @@
+# 光照预设（供画面调整模式一键套用）
+lighting:
+  daylight:
+    key: { azimuth: 120, elevation: 55, intensity: 1.1 }
+    fill: { intensity: 0.3 }
+    ambient: 0.5
+    ao: 0.7
+  studio:
+    key: { azimuth: 45, elevation: 40, intensity: 1.2 }
+    fill: { intensity: 0.5 }
+    ambient: 0.4
+    ao: 0.9
+  night:
+    key: { azimuth: 300, elevation: 25, intensity: 0.5 }
+    fill: { intensity: 0.15 }
+    ambient: 0.25
+    ao: 0.6
+  golden:
+    key: { azimuth: 200, elevation: 15, intensity: 1.3 }
+    fill: { intensity: 0.25 }
+    ambient: 0.45
+    ao: 0.75

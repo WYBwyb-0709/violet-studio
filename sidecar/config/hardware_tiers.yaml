@@ -1,0 +1,36 @@
+# 硬件档位矩阵：可用内存 → 默认运行参数（时间换结果）
+tiers:
+  ultra_low:
+    ram_below_gb: 4
+    backend: sd_cpp
+    quant: q4
+    resolution: 384
+    offload: sequential
+    note: 极低内存，很慢但不会崩
+  low:
+    ram_below_gb: 8
+    backend: onnx_cpu
+    quant: int8
+    resolution: 512
+    offload: sequential
+  mid:
+    ram_below_gb: 16
+    backend: openvino_cpu
+    quant: int8
+    resolution: 768
+    offload: model
+  high:
+    ram_below_gb: 999
+    backend: openvino_cpu
+    quant: int8
+    resolution: 1024
+    offload: model
+
+# 指令集 → 后端优先级
+isa_priority:
+  avx512_bf16: openvino_cpu
+  amx_bf16: openvino_cpu
+  avx2: onnx_cpu
+  avx512f: onnx_cpu
+  neon: sd_cpp
+  sve: sd_cpp

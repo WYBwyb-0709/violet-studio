@@ -1,0 +1,28 @@
+{
+  "name": "violet-studio",
+  "version": "0.1.0",
+  "description": "跨平台 2.5D 分层 AI 生图桌面软件（Windows + Linux）",
+  "main": "main/main.js",
+  "author": {
+    "name": "Violet Studio Contributors",
+    "email": "violet-studio@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/violet-studio/violet-studio",
+  "desktopName": "violet-studio",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:all": "electron-builder --win --linux --x64",
+    "test:ui": "xvfb-run -a electron tests/smoke.cjs --no-sandbox",
+    "sidecar:linux": "pyinstaller sidecar/backend.spec --distpath sidecar/dist --workpath sidecar/build --noconfirm",
+    "sidecar:win": "pyinstaller sidecar/backend.spec --distpath sidecar/dist --workpath sidecar/build --noconfirm"
+  },
+  "devDependencies": {
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
+  }
+}

@@ -1,0 +1,71 @@
+name: Build Windows + Linux installers
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: .\build\build-win.ps1
+            shell: pwsh
+            artifacts: dist/*.exe
+          - os: ubuntu-latest
+            script: bash build/build-linux.sh
+            shell: bash
+            artifacts: dist/*.AppImage dist/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      # Linux runner 磁盘清理：ML 栈 + PyInstaller 产物体积大
+      - name: Free disk (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc || true
+          sudo apt-get clean || true
+          docker system prune -af || true
+
+      - name: Build (${{ matrix.os }})
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.script }}
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: violet-studio-${{ runner.os }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true

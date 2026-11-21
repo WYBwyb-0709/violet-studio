@@ -1,0 +1,47 @@
+appId: com.violetstudio.app
+productName: Violet Studio
+copyright: Copyright © 2026 Violet Studio Contributors
+
+directories:
+  app: .
+  output: dist
+  buildResources: build/icons
+
+files:
+  - main/**/*
+  - src/**/*
+  - package.json
+
+# Python AI sidecar 作为外部资源随包分发（不进 app.asar，保证真实文件路径）
+extraResources:
+  - from: sidecar/dist/backend
+    to: backend
+  - from: sidecar/config
+    to: backend/config
+
+win:
+  target: nsis
+  artifactName: Violet-Studio-${version}-win-x64.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+
+linux:
+  syncDesktopName: true
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  artifactName: Violet-Studio-${version}-linux-x64.${ext}
+  category: Graphics
+
+mac:
+  target: dmg
+
+publish: null

@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="purple">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Violet Studio · 2.5D 分层 AI 创作</title>
+  <link rel="stylesheet" href="styles/theme.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo"></div>
+      <div>
+        <h1>Violet Studio</h1>
+        <div class="sub">2.5D 分层 AI 生图 · 训练 · 微调 · 画面调整</div>
+      </div>
+    </div>
+    <div class="theme-switch">
+      <label>主题</label>
+      <select id="themeSelect">
+        <option value="purple">紫 + 深紫（默认）</option>
+        <option value="light-purple">浅紫 + 白</option>
+        <option value="deep-purple-white">深紫 + 白</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="status-bar">
+    <span class="status-dot" id="statusDot"></span>
+    <span id="statusText">正在连接 AI 引擎…</span>
+    <span id="hwBadges" style="float:right"></span>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" data-tab="generate">🖼️ 生成</button>
+      <button class="tab" data-tab="train">🎓 训练</button>
+      <button class="tab" data-tab="finetune">🧩 模型微调</button>
+      <button class="tab" data-tab="adjust">💡 画面调整</button>
+    </div>
+
+    <!-- 生成 -->
+    <section class="tab-panel" id="panel-generate">
+      <div class="smart-box">
+        <strong>🚀 一键智能配置</strong>
+        <div class="cap" id="smartHint">根据你的硬件自动选择模型档位、分辨率与线程数。点击 Analyze 查看检测结果。</div>
+        <div class="row" style="margin-top:10px">
+          <button class="btn small" id="btnAnalyze">分析硬件</button>
+          <button class="btn small ghost" id="btnSmart">应用智能配置</button>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="panel">
+          <h2>文生图 / 分层生成</h2>
+          <p class="hint">描述画面；开启“分层”将生成可编辑的 RGBA 图层。</p>
+          <div class="field">
+            <label>正向提示词</label>
+            <textarea id="genPrompt" placeholder="例如：赛博朋克风格的城市夜景，霓虹灯光，电影质感"></textarea>
+          </div>
+          <div class="field">
+            <label>反向提示词</label>
+            <input type="text" id="genNeg" placeholder="低质量, 模糊, 水印" />
+          </div>
+          <div class="grid3">
+            <div class="field"><label>档位</label>
+              <select id="genProfile">
+                <option value="fast">快（秒级）</option>
+                <option value="balanced" selected>均衡</option>
+                <option value="quality">高质</option>
+              </select>
+            </div>
+            <div class="field"><label>分辨率</label>
+              <select id="genSize">
+                <option value="512">512×512</option>
+                <option value="768">768×768</option>
+                <option value="1024" selected>1024×1024</option>
+              </select>
+            </div>
+            <div class="field"><label>步数</label>
+              <input type="number" id="genSteps" value="20" min="1" max="100" />
+            </div>
+          </div>
+          <div class="field row">
+            <input type="checkbox" id="genLayered" /> <label for="genLayered" style="margin:0">生成分层 RGBA（LayerDiffuse）</label>
+          </div>
+          <button class="btn" id="btnGenerate">开始生成</button>
+          <button class="btn ghost small" id="btnCancelGen">取消</button>
+          <div class="progress-wrap hidden" id="genProgressWrap">
+            <div class="progress"><div id="genProgressBar"></div></div>
+            <div class="progress-text" id="genProgressText">准备中…</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>结果</h2>
+          <p class="hint">生成完成后在此查看，可送入“画面调整”继续编辑。</p>
+          <div class="result-grid" id="genResults"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 训练 -->
+    <section class="tab-panel hidden" id="panel-train">
+      <div class="panel">
+        <h2>离线训练（CPU · 时间换结果）</h2>
+        <p class="hint">数据集沉淀后，用 SD1.5 LoRA 在本机 CPU 训练。小时级属正常；训练与推理分时进行，不会爆内存。</p>
+        <div class="wizard-steps">
+          <div class="wizard-step active">1. 准备数据</div>
+          <div class="wizard-step">2. 参数配置</div>
+          <div class="wizard-step">3. 训练</div>
+          <div class="wizard-step">4. 评测回流</div>
+        </div>
+        <div class="grid2">
+          <div>
+            <div class="field"><label>数据集目录</label>
+              <div class="row"><input type="text" id="trainData" readonly placeholder="选择包含图片的文件夹" /><button class="btn ghost small" id="btnPickTrain">选择</button></div>
+            </div>
+            <div class="field"><label>触发词</label><input type="text" id="trainTrigger" value="violetstyle" /></div>
+            <div class="field"><label>输出名称</label><input type="text" id="trainName" value="my-lora" /></div>
+          </div>
+          <div>
+            <div class="grid3">
+              <div class="field"><label>Rank</label><input type="number" id="trainRank" value="16" /></div>
+              <div class="field"><label> epoch</label><input type="number" id="trainEpochs" value="20" /></div>
+              <div class="field"><label>分辨率</label><input type="number" id="trainRes" value="512" /></div>
+            </div>
+            <div class="field"><label>内存上限（GB）</label><input type="number" id="trainMem" value="32" /></div>
+            <div class="smart-box"><div class="cap">⚠️ CPU 训练仅支持 SD1.5 LoRA、fp32、关闭训练中采样。预计数小时至一天，取决于数据量与 CPU。</div></div>
+          </div>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnExportDataset">1. 导出数据集</button>
+          <button class="btn" id="btnTrain">2. 开始训练</button>
+        </div>
+        <div class="progress-wrap hidden" id="trainProgressWrap">
+          <div class="progress"><div id="trainProgressBar"></div></div>
+          <div class="progress-text" id="trainProgressText">准备中…</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 模型微调 -->
+    <section class="tab-panel hidden" id="panel-finetune">
+      <div class="panel">
+        <h2>模型微调（LoRA 权重管理）</h2>
+        <p class="hint">加载已有 LoRA，调整强度、叠加多个适配器，或基于新数据轻量继续训练。</p>
+        <div class="grid2">
+          <div>
+            <div class="field"><label>已安装模型 / LoRA</label>
+              <select id="modelList"><option>加载中…</option></select>
+            </div>
+            <div class="field"><label>LoRA 强度</label>
+              <input type="range" id="loraScale" min="0" max="200" value="80" /> <span id="loraScaleVal">0.80</span>
+            </div>
+            <div class="field row">
+              <input type="checkbox" id="loraStack" /> <label for="loraStack" style="margin:0">叠加第二个 LoRA</label>
+            </div>
+          </div>
+          <div>
+            <div class="smart-box"><div class="cap" id="finetuneInfo">模型信息加载中…</div></div>
+            <button class="btn" id="btnLoadModel">加载模型</button>
+            <button class="btn ghost small" id="btnMerge">融合并另存</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 画面调整 -->
+    <section class="tab-panel hidden" id="panel-adjust">
+      <div class="grid2">
+        <div class="panel">
+          <h2>图层与间距（快路径 · 无需重新生图）</h2>
+          <p class="hint">选择场景，拖动图层 Z 间距即可实时看到视差变化。</p>
+          <div class="field"><label>场景文件</label>
+            <div class="row"><input type="text" id="scenePath" readonly placeholder="选择 scene.json" /><button class="btn ghost small" id="btnPickScene">选择</button></div>
+          </div>
+          <div id="layerList"></div>
+        </div>
+        <div class="panel">
+          <h2>光照调整</h2>
+          <p class="hint">基于 albedo + normal 实时重打光，秒级预览。</p>
+          <div class="grid3">
+            <div class="field"><label>主光方位(°)</label><input type="range" id="keyAz" min="0" max="360" value="45" /></div>
+            <div class="field"><label>主光高度(°)</label><input type="range" id="keyEl" min="0" max="90" value="45" /></div>
+            <div class="field"><label>主光强度</label><input type="range" id="keyInt" min="0" max="200" value="100" /></div>
+            <div class="field"><label>补光强度</label><input type="range" id="fillInt" min="0" max="200" value="40" /></div>
+            <div class="field"><label>环境光</label><input type="range" id="ambInt" min="0" max="200" value="60" /></div>
+            <div class="field"><label>AO 强度</label><input type="range" id="aoInt" min="0" max="200" value="80" /></div>
+          </div>
+          <button class="btn" id="btnRender">实时渲染预览</button>
+          <button class="btn ghost small" id="btnExportImage">导出图片</button>
+          <div class="result-grid" id="adjustResult"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="js/api.js"></script>
+  <script src="js/wizard/wizard.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

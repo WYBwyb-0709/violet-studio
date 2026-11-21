@@ -1,0 +1,37 @@
+# 生图档位预设
+profiles:
+  fast:
+    description: 秒级出图，适合预览与批量
+    model: sd15-turbo
+    steps: 1
+    resolution: 512
+    teaser: SDXS / SD-Turbo + TAESD
+  balanced:
+    description: 质量与速度折中
+    model: sd15
+    steps: 8
+    resolution: 768
+    teaser: SD1.5 + LCM / Lightning
+  quality:
+    description: 高质成品
+    model: sdxl
+    steps: 30
+    resolution: 1024
+    teaser: SDXL fp16 + 完整 VAE
+
+# 分层生成
+layered:
+  method: layerdiffuse
+  transparent_vae: layer_sd15_transparent_attn.safetensors
+  fg_lora: layer_sd15_fg.safetensors
+  bg_lora: layer_sd15_bg.safetensors
+  joint_batch_multiple: 3
+  conditional_batch_multiple: 2
+  note: 分层生成走 diffusers 后端（OpenVINO IR 不支持透明 VAE）
+
+# 属性估计（分层编辑为快路径的前提）
+attributes:
+  depth: Depth-Anything-V2-Base   # Apache-2.0（Large 为 CC-BY-NC，禁用）
+  normal: Marigold-normals         # Apache 代码，权重 OpenRAIL
+  albedo: Marigold-IID             # 去光照反照率
+  matte: BiRefNet                  # MIT
