@@ -58,21 +58,24 @@ Python AI sidecar（PyInstaller one-folder 随包，不进 app.asar）
 
 训练器已由骨架补全为**真实可运行的 diffusers + peft LoRA 循环**（`sidecar/app/train_lora_cpu.py`）：读取图片与同名 `.txt` caption、真实反向传播、梯度检查点、余弦学习率、保存 peft safetensors。
 
-- **真实数据集**：[Saranga7/pokemon-dreambooth](https://github.com/Saranga7/pokemon-dreambooth) 的 Pikachu 类（8 张图 + 同名 `.txt` caption），由 `tools/fetch_dataset.py` 经 GitHub MCP API 下载。触发词 `violetpika`。
-- **沙箱实测**（8GiB RAM / 5 核 CPU，无 GPU）：用 `tools/build_tiny_sd.py` **纯本地构造**的极小 SD（结构同官方 tiny-sd，87 万参数，无需联网下权重），跑通「数据 → caption → LoRA 注入 → 反向传播 → safetensors → 重新加载出图」全链路。
-- **实测结果**：6 步训练 loss 1.192 → 1.146，耗时 6.0s，峰值内存 ~947MB，产出 64 个 LoRA 张量 / 12800 参数；`--validate` 生成 32×32 验证图（std 42.5，非纯色）。
+- **真实数据集**：[Saranga7/pokemon-dreambooth](https://github.com/Saranga7/pokemon-dreambooth) 的 Pikachu 类（8 张图 + 同名 `.txt` caption），由 `tools/fetch_dataset.py` 经 GitHub API 下载。触发词 `violetpika`。
+- **真实预训练权重**：`hf-internal-testing/tiny-stable-diffusion-pipe`（官方极小 SD，UNet 1,427,012 参数，真实训练过的权重），从 hf-mirror 下载 bin 权重 + 配置，修正 `model_index.json` 为 PyTorch 类后加载。
+- **沙箱实测**（8GiB RAM / 5 核 CPU，无 GPU）：真实预训练权重上跑 40 步 LoRA，实时观察 loss（1.156 → 0.857 → 稳定 ~1.08），耗时 16.7s，产出 96 个 LoRA 张量 / 23,040 参数。
+- **有效性验证**：`tools/verify_lora.py` 对同一 prompt 分别用「底模原样」与「注入 LoRA」生成，平均像素差异 **45.5**（最大 198），证明 LoRA 真实改变输出，非随机噪声。
 - **目标机**（123GiB / 16c32t）：用完整 SD1.5 权重按下方命令跑真实 LoRA，小时级。
 
 ```bash
-# 一键准备：下载数据集 + 本地构造 tiny SD（均无需大模型下载）
+# 一键准备：下载数据集 + 下载真实 tiny SD 权重（tools/ 下脚本）
 python tools/fetch_dataset.py
-python tools/build_tiny_sd.py
 
-# 沙箱链路验证（tiny SD，秒级）
+# 沙箱真实权重训练（实时打印 loss）
 python sidecar/app/train_lora_cpu.py \
-  --model models/tiny-sd-local --data_dir data/pikachu_lora \
-  --resolution 64 --max_train_steps 6 --rank 4 --network_alpha 4 \
-  --num_cpu_threads 4 --output_dir models/lora/pika_test --validate
+  --model models/tiny-sd --data_dir data/pikachu_lora \
+  --resolution 32 --max_train_steps 40 --rank 4 --network_alpha 4 \
+  --num_cpu_threads 4 --lr_warmup_steps 5 --output_dir models/lora/pika_real
+
+# 验证 LoRA 有效性（底模 vs LoRA 对比生成）
+python tools/verify_lora.py
 
 # 目标机真实训练（本地 SD1.5 权重）
 python sidecar/app/train_lora_cpu.py \
@@ -84,7 +87,7 @@ python sidecar/app/train_lora_cpu.py \
 
 CPU 上强制 fp32（`--mixed_precision no`），不支持 fp16/bf16 训练；256GB 以下内存建议 `--cache_latents` 或降分辨率。真实训练元数据见 `models/lora/*/training_meta.json`。
 
-> 说明：沙箱用本地构造的 tiny SD 是为在 8GiB/无 GPU 环境验证训练**代码链路正确性**并产出**真实 LoRA 权重**；其权重随机初始化，出图质量不代表模型效果。目标机加载真实 SD1.5 权重即得可用 LoRA。
+> 说明：沙箱受 8GiB/无 GPU 限制，用官方 tiny SD 的**真实预训练权重**验证训练链路与 LoRA 有效性；目标机加载完整 SD1.5 权重即得可用 LoRA。沙箱 tiny 模型出图仅为链路证明，不代表最终效果。
 
 ## 安装
 
