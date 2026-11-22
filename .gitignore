@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.venv-build/
+.pytest_cache/
+
+# PyInstaller
+sidecar/build/
+sidecar/dist/
+*.spec.bak
+
+# Node
+node_modules/
+.pnpm-store/
+
+# 打包产物
+dist/
+*.AppImage
+*.deb
+*.exe
+*.dmg
+
+# 用户数据与模型（数据集由 tools/fetch_dataset.py 现场下载）
+data/
+models/
+*.safetensors
+*.gguf
+*.bin
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 本地推送辅助脚本（含环境凭据/内网地址，不外发）
+tools/gh_mcp.py
+tools/make_payload.py
+tools/push_all.py
+tools/fetch_tokenizer.py
+tools/fetch_tiny_model.py

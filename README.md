@@ -54,6 +54,38 @@ Python AI sidecar（PyInstaller one-folder 随包，不进 app.asar）
 - 大模型不随安装包分发，由应用内下载管理器按可用内存拉取；安装包只含程序与小依赖。
 - 完整画世界式的自由笔刷/选区/滤镜不在本期范围。
 
+## CPU LoRA 训练实测
+
+训练器已由骨架补全为**真实可运行的 diffusers + peft LoRA 循环**（`sidecar/app/train_lora_cpu.py`）：读取图片与同名 `.txt` caption、真实反向传播、梯度检查点、余弦学习率、保存 peft safetensors。
+
+- **真实数据集**：[Saranga7/pokemon-dreambooth](https://github.com/Saranga7/pokemon-dreambooth) 的 Pikachu 类（8 张图 + 同名 `.txt` caption），由 `tools/fetch_dataset.py` 经 GitHub MCP API 下载。触发词 `violetpika`。
+- **沙箱实测**（8GiB RAM / 5 核 CPU，无 GPU）：用 `tools/build_tiny_sd.py` **纯本地构造**的极小 SD（结构同官方 tiny-sd，87 万参数，无需联网下权重），跑通「数据 → caption → LoRA 注入 → 反向传播 → safetensors → 重新加载出图」全链路。
+- **实测结果**：6 步训练 loss 1.192 → 1.146，耗时 6.0s，峰值内存 ~947MB，产出 64 个 LoRA 张量 / 12800 参数；`--validate` 生成 32×32 验证图（std 42.5，非纯色）。
+- **目标机**（123GiB / 16c32t）：用完整 SD1.5 权重按下方命令跑真实 LoRA，小时级。
+
+```bash
+# 一键准备：下载数据集 + 本地构造 tiny SD（均无需大模型下载）
+python tools/fetch_dataset.py
+python tools/build_tiny_sd.py
+
+# 沙箱链路验证（tiny SD，秒级）
+python sidecar/app/train_lora_cpu.py \
+  --model models/tiny-sd-local --data_dir data/pikachu_lora \
+  --resolution 64 --max_train_steps 6 --rank 4 --network_alpha 4 \
+  --num_cpu_threads 4 --output_dir models/lora/pika_test --validate
+
+# 目标机真实训练（本地 SD1.5 权重）
+python sidecar/app/train_lora_cpu.py \
+  --model /path/to/sd15 --data_dir /path/to/dataset \
+  --resolution 512 --max_train_steps 1500 --rank 16 \
+  --gradient_accumulation_steps 4 --num_cpu_threads 16 \
+  --output_dir models/lora/my_style
+```
+
+CPU 上强制 fp32（`--mixed_precision no`），不支持 fp16/bf16 训练；256GB 以下内存建议 `--cache_latents` 或降分辨率。真实训练元数据见 `models/lora/*/training_meta.json`。
+
+> 说明：沙箱用本地构造的 tiny SD 是为在 8GiB/无 GPU 环境验证训练**代码链路正确性**并产出**真实 LoRA 权重**；其权重随机初始化，出图质量不代表模型效果。目标机加载真实 SD1.5 权重即得可用 LoRA。
+
 ## 安装
 
 从 Releases 下载对应安装包：
