@@ -1,0 +1,96 @@
+{
+  "version": "1.0",
+  "truncation": null,
+  "padding": null,
+  "added_tokens": [
+    {
+      "id": 0,
+      "content": "<|startoftext|>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    },
+    {
+      "id": 2,
+      "content": "<|endoftext|>",
+      "single_word": false,
+      "lstrip": false,
+      "rstrip": false,
+      "normalized": false,
+      "special": true
+    }
+  ],
+  "normalizer": {
+    "type": "Sequence",
+    "normalizers": [
+      {
+        "type": "NFC"
+      },
+      {
+        "type": "Replace",
+        "pattern": {
+          "Regex": "\\s+"
+        },
+        "content": " "
+      },
+      {
+        "type": "Lowercase"
+      }
+    ]
+  },
+  "pre_tokenizer": {
+    "type": "Sequence",
+    "pretokenizers": [
+      {
+        "type": "Split",
+        "pattern": {
+          "Regex": "<\\|startoftext\\|>|<\\|endoftext\\|>|'s|'t|'re|'ve|'m|'ll|'d|[\\p{L}]+|[\\p{N}]|[^\\s\\p{L}\\p{N}]+"
+        },
+        "behavior": "Removed",
+        "invert": true
+      },
+      {
+        "type": "ByteLevel",
+        "add_prefix_space": false,
+        "trim_offsets": true,
+        "use_regex": true
+      }
+    ]
+  },
+  "post_processor": {
+    "type": "RobertaProcessing",
+    "sep": [
+      "<|endoftext|>",
+      2
+    ],
+    "cls": [
+      "<|startoftext|>",
+      0
+    ],
+    "trim_offsets": false,
+    "add_prefix_space": false
+  },
+  "decoder": {
+    "type": "ByteLevel",
+    "add_prefix_space": true,
+    "trim_offsets": true,
+    "use_regex": true
+  },
+  "model": {
+    "type": "BPE",
+    "dropout": null,
+    "unk_token": "<|endoftext|>",
+    "continuing_subword_prefix": "",
+    "end_of_word_suffix": "</w>",
+    "fuse_unk": false,
+    "byte_fallback": false,
+    "ignore_merges": false,
+    "vocab": {
+      "<|startoftext|>": 0,
+      "<|endoftext|>": 2
+    },
+    "merges": []
+  }
+}

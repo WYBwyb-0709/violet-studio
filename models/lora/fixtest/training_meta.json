@@ -1,0 +1,15 @@
+{
+  "base_model": "models/tiny-sd",
+  "trigger": "violetstyle",
+  "rank": 4,
+  "network_alpha": 4,
+  "resolution": 32,
+  "max_train_steps": 8,
+  "learning_rate": 0.0001,
+  "scheduler": "cosine",
+  "dataset": "data/pikachu_lora",
+  "samples": 8,
+  "train_seconds": 3.09,
+  "mixed_precision": "no",
+  "format": "peft safetensors (UNet LoRA)"
+}
