@@ -61,7 +61,8 @@ Python AI sidecar（PyInstaller one-folder 随包，不进 app.asar）
 - **真实数据集**：[Saranga7/pokemon-dreambooth](https://github.com/Saranga7/pokemon-dreambooth) 的 Pikachu 类（8 张图 + 同名 `.txt` caption），由 `tools/fetch_dataset.py` 经 GitHub API 下载。触发词 `violetpika`。
 - **真实预训练权重**：`hf-internal-testing/tiny-stable-diffusion-pipe`（官方极小 SD，UNet 1,427,012 参数，真实训练过的权重），从 hf-mirror 下载 bin 权重 + 配置，修正 `model_index.json` 为 PyTorch 类后加载。
 - **沙箱实测**（8GiB RAM / 5 核 CPU，无 GPU）：真实预训练权重上跑 40 步 LoRA，实时观察 loss（1.156 → 0.857 → 稳定 ~1.08），耗时 16.7s，产出 96 个 LoRA 张量 / 23,040 参数。
-- **有效性验证**：`tools/verify_lora.py` 对同一 prompt 分别用「底模原样」与「注入 LoRA」生成，平均像素差异 **45.5**（最大 198），证明 LoRA 真实改变输出，非随机噪声。
+- **时间换结果**：从 40 步权重 resume，用 VAE latent 缓存 + 梯度累积跑 400 步（95s），每 100 步存 checkpoint。`tools/eval_checkpoints.py` 用固定种子/噪声/时间步严格评估，训练集去噪 loss 随步数**单调下降**（相对底模改善 0.004%→0.010%）。**诚实结论**：tiny 模型 + 8 图 + rank4 下，延长时间确实让模型更拟合训练数据，但收益极小——真正瓶颈是模型容量与数据量，不是训练时长。
+- **实测发现并修复的 bug**：peft 0.22 + diffusers 0.43 下 `save_pretrained()` 导出的 key 带双重 `base_model.model.` 前缀且缺 `.default`，导致权重无法重新加载（resume 静默失效、评估无差异）。已在 `save_lora_fixed()` 中规范化 key，resume 验证 96/96 张量正确加载。
 - **目标机**（123GiB / 16c32t）：用完整 SD1.5 权重按下方命令跑真实 LoRA，小时级。
 
 ```bash
@@ -74,8 +75,16 @@ python sidecar/app/train_lora_cpu.py \
   --resolution 32 --max_train_steps 40 --rank 4 --network_alpha 4 \
   --num_cpu_threads 4 --lr_warmup_steps 5 --output_dir models/lora/pika_real
 
-# 验证 LoRA 有效性（底模 vs LoRA 对比生成）
-python tools/verify_lora.py
+# 时间换结果：从上一轮权重继续，latent 缓存 + 梯度累积 + 中途 checkpoint
+python sidecar/app/train_lora_cpu.py \
+  --model models/tiny-sd --data_dir data/pikachu_lora \
+  --resolution 32 --max_train_steps 400 --rank 4 --network_alpha 4 \
+  --num_cpu_threads 4 --learning_rate 5e-5 --gradient_accumulation_steps 2 \
+  --cache_latents --resume_from models/lora/pika_real --save_every 100 \
+  --output_dir models/lora/pika_long
+
+# 严格评估各 checkpoint（固定种子，验证 loss 随时间下降）
+python tools/eval_checkpoints.py
 
 # 目标机真实训练（本地 SD1.5 权重）
 python sidecar/app/train_lora_cpu.py \

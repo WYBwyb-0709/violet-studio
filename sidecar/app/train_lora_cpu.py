@@ -111,6 +111,8 @@ def build_parser():
     p.add_argument("--cache_latents", action="store_true", help="预编码 VAE latents 到内存（小图省算力）")
     p.add_argument("--mem_limit_gb", type=float, default=0, help=">0 时粗略限制常驻内存（提示用）")
     p.add_argument("--validate", action="store_true", help="训练后生成一张验证图（CPU 慢，可选）")
+    p.add_argument("--resume_from", default="", help="从已有 LoRA adapter 目录继续训练（时间换结果）")
+    p.add_argument("--save_every", type=int, default=0, help="每 N 步存一次 checkpoint（0=关闭）")
     return p
 
 
@@ -144,6 +146,32 @@ def inject_lora(unet, rank, alpha):
     print(f"[violet] LoRA 注入完成：可训练 {trainable:,} / 总 {total:,} "
           f"({100.0 * trainable / max(total, 1):.3f}%)", flush=True)
     return model
+
+
+def save_lora_fixed(model, out_dir):
+    """保存 LoRA 权重为可被正确加载的格式。
+
+    背景（实测发现的 bug）：peft 0.22 + diffusers 0.43 组合下，
+    model.save_pretrained() 导出的 key 带双重 `base_model.model.` 前缀
+    且缺 `.default`，导致 load_lora_weights / from_pretrained 都识别不到。
+    解决：先用 save_pretrained 导出 adapter_config 等配套文件，
+    再从 named_parameters 直接导出干净的单层 key 覆盖 safetensors。
+    """
+    os.makedirs(out_dir, exist_ok=True)
+    from safetensors.torch import save_file
+    # 先让 peft 写出 adapter_config.json / README 等
+    try:
+        model.save_pretrained(out_dir)
+    except Exception:
+        pass
+    # named_parameters 的 key 已是标准格式：base_model.model.xxx.lora_A.default.weight
+    clean = {
+        name: param.detach().cpu().contiguous()
+        for name, param in model.named_parameters()
+        if "lora_" in name
+    }
+    save_file(clean, os.path.join(out_dir, "adapter_model.safetensors"))
+    return len(clean)
 
 
 def make_scheduler(optimizer, args, total):
@@ -196,6 +224,24 @@ def main():
 
     # LoRA 注入 UNet
     unet = inject_lora(unet, args.rank, args.network_alpha)
+    # 从已有 LoRA 继续训练（时间换结果：在上轮基础上继续积累）
+    if args.resume_from:
+        from safetensors.torch import load_file
+        adapter = os.path.join(args.resume_from, "adapter_model.safetensors")
+        if not os.path.exists(adapter):
+            raise FileNotFoundError(f"找不到 LoRA 权重：{adapter}")
+        sd = load_file(adapter)
+        nmap = dict(unet.named_parameters())
+        loaded = 0
+        for k, v in sd.items():
+            # 兼容旧版坏 key（双重前缀 + 缺 .default）与新版干净 key
+            kk = k.replace("base_model.model.base_model.model.", "base_model.model.")
+            kk = kk.replace(".lora_A.weight", ".lora_A.default.weight")
+            kk = kk.replace(".lora_B.weight", ".lora_B.default.weight")
+            if kk in nmap:
+                nmap[kk].data.copy_(v.float())
+                loaded += 1
+        print(f"[violet] 从已有 LoRA 恢复权重：{args.resume_from}（{loaded}/{len(sd)} 张量）", flush=True)
     if not args.no_gradient_checkpointing:
         unet.enable_gradient_checkpointing()
 
@@ -291,11 +337,16 @@ def main():
                 print(f"[violet] step {global_step}/{total_steps} loss={avg:.5f} "
                       f"lr={lr_scheduler.get_last_lr()[0]:.2e} elapsed={time.time()-t0:.1f}s", flush=True)
                 running_loss = 0.0
+            if args.save_every and global_step % args.save_every == 0 and global_step < total_steps:
+                ckpt = os.path.join(args.output_dir, f"checkpoint-{global_step}")
+                n = save_lora_fixed(unet, ckpt)
+                print(f"[violet] checkpoint saved: {ckpt} ({n} LoRA tensors)", flush=True)
 
     # 保存 LoRA 权重（safetensors）
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    unet.save_pretrained(str(out_dir))
+    n_saved = save_lora_fixed(unet, str(out_dir))
+    print(f"[violet] LoRA 权重已规范化保存：{n_saved} 个张量（可被标准工具加载）", flush=True)
     meta = {
         "base_model": args.model,
         "trigger": args.trigger,
